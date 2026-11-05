@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>MEM😉JITEST</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #fff;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  /* ===== Márgenes (cambiá estos valores si ponés publicidad) ===== */
+  :root {
+    --title-h: 96px;       /* alto de la franja del título */
+    --margin-side: 64px;   /* margen izquierdo y derecho */
+    --margin-bottom: 64px; /* margen inferior */
+    --title-fs: 34px;      /* tamaño del título */
+    --stat-fs: 18px;       /* tamaño del tiempo y el contador */
+  }
+  @media (max-width: 600px) {
+    :root {
+      --title-h: 64px; --margin-side: 20px; --margin-bottom: 24px;
+      --title-fs: 21px; --stat-fs: 14px;
+    }
+  }
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: var(--title-h);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--title-fs);
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: #222;
+  }
+  header .stat {
+    position: absolute; top: 0; bottom: 0;
+    display: flex; align-items: center;
+    font-size: var(--stat-fs);
+    font-weight: 600;
+    letter-spacing: 0;
+    color: #666;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Alineados con el borde de la primera y la última columna de fichas */
+  #timer { left: calc(var(--margin-side) + var(--gap, 0px)); }
+  #count { right: calc(var(--margin-side) + var(--gap, 0px)); }
+  header .emo {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    font-weight: normal;
+    letter-spacing: 0;
+    margin: 0 .04em;
+  }
+  #board {
+    position: fixed;
+    top: var(--title-h);
+    left: var(--margin-side);
+    right: var(--margin-side);
+    bottom: var(--margin-bottom);
+  }
+  #grid {
+    position: absolute; inset: 0;
+    display: grid;
+    gap: var(--gap);
+    padding: var(--gap);
+  }
+  .card { perspective: 600px; cursor: pointer; touch-action: manipulation; }
+  .inner {
+    position: relative; width: 100%; height: 100%;
+    transition: transform .3s ease;
+    transform-style: preserve-3d;
+  }
+  .card.up .inner { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0;
+    border-radius: var(--radius);
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .back { background: #d6d6d6; }
+  .card:hover:not(.up) .back { background: #c9c9c9; }
+  .front {
+    background: #f2f2f2;
+    transform: rotateY(180deg);
+    font-size: var(--fs);
+    line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  }
+  .card.done .front { background: #fff; }
+  .card.done { cursor: default; }
+
+  #win {
+    position: fixed; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.85);
+    text-align: center; color: #333;
+    cursor: pointer;
+  }
+  #win.show { display: flex; }
+  #win h1 { font-size: 2.2rem; margin-bottom: .5rem; }
+  #win p { font-size: 1.1rem; color: #666; }
+</style>
+</head>
+<body>
+<header>
+  <span id="timer" class="stat">⏱ 0:00</span>
+  <span>MEM<span class="emo">😉</span>JITEST</span>
+  <span id="count" class="stat">0/0</span>
+</header>
+<div id="board"><div id="grid"></div></div>
+<div id="win">
+  <div>
+    <h1>¡Ganaste! 🎉</h1>
+    <p id="stats"></p>
+    <p style="margin-top:1rem">Tocá para jugar de nuevo</p>
+  </div>
+</div>
+
+<script>
+const EMOJIS = `
+😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😙 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 🤥 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 👿 💀 💩 🤡 👹 👺 👻 👽 👾 🤖 😺 😸 😹 😻 😼 😽 🙀 😿 😾 🙈 🙉 🙊
+💋 💌 💘 💝 💖 💗 💓 💞 💕 💟 💔 🧡 💛 💚 💙 💜 🤎 🖤 🤍 💯 💢 💥 💫 💦 💨 💣 💬 💭 💤
+👋 🤚 ✋ 🖖 👌 🤏 🤞 🤟 🤘 🤙 👈 👉 👆 👇 👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝 🙏 💅 🤳 💪 🦾 🦿 🦵 🦶 👂 🦻 👃 🧠 🦷 🦴 👀 👅 👄 👶 🧒 👦 👧 🧑 👱 👨 🧔 👩 🧓 👴 👵
+🐵 🐒 🦍 🦧 🐶 🐕 🦮 🐩 🐺 🦊 🦝 🐱 🐈 🦁 🐯 🐅 🐆 🐴 🐎 🦄 🦓 🦌 🐮 🐂 🐃 🐄 🐷 🐖 🐗 🐽 🐏 🐑 🐐 🐪 🐫 🦙 🦒 🐘 🦏 🦛 🐭 🐁 🐀 🐹 🐰 🐇 🦔 🦇 🐻 🐨 🐼 🦥 🦦 🦨 🦘 🦡 🐾 🦃 🐔 🐓 🐣 🐤 🐥 🐦 🐧 🦅 🦆 🦢 🦉 🦩 🦚 🦜 🐸 🐊 🐢 🦎 🐍 🐲 🐉 🦕 🦖 🐳 🐋 🐬 🐟 🐠 🐡 🦈 🐙 🐚 🐌 🦋 🐛 🐜 🐝 🐞 🦗 🦂 🦟 🦠
+💐 🌸 💮 🌹 🥀 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🌾 🌿 🍀 🍁 🍂 🍃 🍄 🌰
+🍇 🍈 🍉 🍊 🍋 🍌 🍍 🥭 🍎 🍏 🍐 🍑 🍒 🍓 🥝 🍅 🥥 🥑 🍆 🥔 🥕 🌽 🥒 🥬 🥦 🧄 🧅 🥜 🍞 🥐 🥖 🥨 🥯 🥞 🧇 🧀 🍖 🍗 🥩 🥓 🍔 🍟 🍕 🌭 🥪 🌮 🌯 🥙 🧆 🥚 🍳 🥘 🍲 🥣 🥗 🍿 🧈 🧂 🥫 🍱 🍘 🍙 🍚 🍛 🍜 🍝 🍠 🍢 🍣 🍤 🍥 🥮 🍡 🥟 🥠 🥡 🦀 🦞 🦐 🦑 🦪 🍦 🍧 🍨 🍩 🍪 🎂 🍰 🧁 🥧 🍫 🍬 🍭 🍮 🍯 🍼 🥛 🍵 🍶 🍾 🍷 🍸 🍹 🍺 🍻 🥂 🥃 🥤 🧃 🧉 🧊 🥢 🍴 🥄 🔪 🏺
+🌍 🌎 🌏 🌐 🗾 🧭 🌋 🗻 🧱 🏠 🏡 🏢 🏣 🏤 🏥 🏦 🏨 🏩 🏪 🏫 🏬 🏭 🏯 🏰 💒 🗼 🗽 ⛪ 🕌 🛕 🕍 🕋 ⛲ ⛺ 🌁 🌃 🌄 🌅 🌆 🌇 🌉 🎠 🎡 🎢 💈 🎪 🚂 🚃 🚄 🚅 🚆 🚇 🚈 🚉 🚊 🚝 🚞 🚋 🚌 🚍 🚎 🚐 🚑 🚒 🚓 🚔 🚕 🚖 🚗 🚘 🚙 🚚 🚛 🚜 🛵 🦽 🦼 🛺 🚲 🛴 🛹 🚏 ⛽ 🚨 🚥 🚦 🛑 🚧 ⚓ ⛵ 🛶 🚤 🚢 🛫 🛬 🪂 💺 🚁 🚟 🚠 🚡 🚀 🛸 ⌛ ⏳ ⌚ ⏰ 🌑 🌓 🌕 🌗 🌙 🌚 🌛 🌝 🌞 ⭐ 🌟 🌠 ⛅ 🌀 🌈 🌂 ☔ ⚡ ⛄ 🔥 💧 🌊
+🎃 🎄 🎆 🎇 🧨 ✨ 🎈 🎉 🎊 🎋 🎍 🎎 🎏 🎐 🎑 🧧 🎀 🎁 🎫 🏆 🏅 🥇 🥈 🥉 ⚽ ⚾ 🥎 🏀 🏐 🏈 🏉 🎾 🥏 🎳 🏏 🏑 🏒 🥍 🏓 🏸 🥊 🥋 🥅 ⛳ 🎣 🤿 🎽 🎿 🛷 🥌 🎯 🪀 🪁 🎱 🔮 🧿 🎮 🎰 🎲 🧩 🧸 🃏 🀄 🎴 🎭 🎨 🧵 🧶
+👓 🥽 🥼 🦺 👔 👕 👖 🧣 🧤 🧥 🧦 👗 👘 🥻 🩱 🩲 🩳 👙 👚 👛 👜 👝 🎒 👞 👟 🥾 🥿 👠 👡 🩰 👢 👑 👒 🎩 🎓 🧢 📿 💄 💍 💎 🔇 🔊 📢 📣 📯 🔔 🔕 🎼 🎵 🎶 🎤 🎧 📻 🎷 🎸 🎹 🎺 🎻 🪕 🥁 📱 📞 📟 📠 🔋 🔌 💻 💽 💾 💿 🎥 🎬 📺 📷 📹 📼 🔍 💡 🔦 🏮 🪔 📕 📖 📗 📘 📙 📚 📓 📒 📜 📄 📰 🔖 💰 💴 💵 💶 💷 💸 💳 🧾 💹 📧 📨 📤 📥 📦 📫 📮 📝 💼 📁 📂 📅 📇 📈 📉 📊 📋 📌 📍 📎 📏 📐 🔒 🔓 🔑 🔨 🪓 🏹 🔧 🔩 🧰 🧲 🧪 🧫 🧬 🔬 🔭 📡 💉 🩸 💊 🩹 🩺 🚪 🪑 🚽 🚿 🛁 🪒 🧴 🧷 🧹 🧺 🧻 🧼 🧽 🧯 🛒 🗿
+🏧 🚮 🚰 ♿ 🚹 🚺 🚻 🚼 🚾 🛂 🛃 🛄 🛅 🚸 ⛔ 🚫 🚳 🚭 🚯 🚱 🚷 📵 🔞 🔄 🔙 🔚 🔛 🔜 🔝 🛐 ⛎ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ 🔀 🔁 🔂 ⏩ ⏪ ⏫ ⏬ 🎦 🔅 🔆 📶 📳 📴 ❓ ❕ ❗ 💱 💲 🔱 📛 🔰 ⭕ ✅ ❌ ❎ ➕ ➖ ➗ ➰ ➿ 🆎 🆑 🆒 🆓 🆔 🆕 🆖 🆗 🆘 🆙 🆚 🔴 🟠 🟡 🟢 🔵 🟣 🟤 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 🟫 ⬛ ⬜ 🔶 🔷 🔺 🔻 💠 🔘 🔳 🔲
+`.trim().split(/\s+/);
+const POOL = [...new Set(EMOJIS)];
+
+const gridEl  = document.getElementById('grid');
+const winEl   = document.getElementById('win');
+const statsEl = document.getElementById('stats');
+const timerEl = document.getElementById('timer');
+const countEl = document.getElementById('count');
+let tick = null;
+
+// ===== Sonidos (generados con Web Audio, sin archivos externos) =====
+let audio = null;
+function ac() {
+  if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+  if (audio.state === 'suspended') audio.resume();
+  return audio;
+}
+
+// "swap": soplido corto de ruido filtrado que barre hacia arriba
+function sndSwap(vol = 0.35) {
+  const a = ac(), t = a.currentTime, dur = 0.12;
+  const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(900, t);
+  f.frequency.exponentialRampToValueAtTime(4000, t + dur);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f).connect(g).connect(a.destination);
+  src.start(t); src.stop(t + dur);
+}
+
+// "tin!": campanita aguda con armónico
+function sndTin() {
+  const a = ac(), t = a.currentTime;
+  [[1760, 0.25], [2640, 0.12], [3520, 0.06]].forEach(([freq, vol]) => {
+    const o = a.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + 0.65);
+  });
+}
+
+// "pop": burbuja corta que cae de tono
+function sndPop() {
+  const a = ac(), t = a.currentTime;
+  const o = a.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(600, t);
+  o.frequency.exponentialRampToValueAtTime(120, t + 0.12);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+  o.connect(g).connect(a.destination);
+  o.start(t); o.stop(t + 0.16);
+}
+
+function fmt(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+function elapsed() { return Math.floor((Date.now() - startTime) / 1000); }
+function updateTimer(s) { timerEl.textContent = '⏱ ' + fmt(s); }
+function updateCount() { countEl.textContent = `${matched / 2}/${total / 2}`; }
+function stopTimer() { clearInterval(tick); tick = null; }
+
+let first = null, second = null, lock = false;
+let moves = 0, matched = 0, total = 0, started = false, startTime = 0;
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Calcula columnas y filas para llenar la pantalla con un rectángulo completo
+// y una cantidad PAR de casillas (para que todas formen parejas).
+function computeLayout() {
+  const board = document.getElementById('board');
+  const W = board.clientWidth, H = board.clientHeight;
+  const small = Math.min(W, H) < 600;
+  const target = small ? 30 : 36;        // tamaño aproximado de casilla (px)
+  const gap = small ? 3 : 4;
+
+  let cols = Math.max(2, Math.floor((W - gap) / (target + gap)));
+  let rows = Math.max(2, Math.floor((H - gap) / (target + gap)));
+
+  if ((cols * rows) % 2 !== 0) {
+    // Ajusta la dimensión que deja las casillas más cuadradas
+    const ratio = (c, r) => Math.abs(Math.log(((W - gap) / c) / ((H - gap) / r)));
+    if (cols > 2 && (rows <= 2 || ratio(cols - 1, rows) <= ratio(cols, rows - 1))) cols--;
+    else rows--;
+  }
+
+  const cw = (W - gap) / cols - gap;
+  const ch = (H - gap) / rows - gap;
+  return { cols, rows, gap, cell: Math.min(cw, ch) };
+}
+
+function newGame() {
+  const { cols, rows, gap, cell } = computeLayout();
+  total = cols * rows;
+  const pairs = total / 2;
+
+  const pick = shuffle(POOL.slice());
+  const deck = [];
+  for (let i = 0; i < pairs; i++) {
+    const e = pick[i % pick.length];
+    deck.push(e, e);
+  }
+  shuffle(deck);
+
+  document.documentElement.style.setProperty('--gap', gap + 'px');
+  gridEl.style.setProperty('--fs', Math.round(cell * 0.62) + 'px');
+  gridEl.style.setProperty('--radius', Math.max(3, Math.round(cell * 0.14)) + 'px');
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+  const frag = document.createDocumentFragment();
+  deck.forEach(e => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.e = e;
+    card.innerHTML = `<div class="inner"><div class="face back"></div><div class="face front">${e}</div></div>`;
+    frag.appendChild(card);
+  });
+  gridEl.replaceChildren(frag);
+
+  first = second = null; lock = false;
+  moves = 0; matched = 0; started = false;
+  stopTimer();
+  updateTimer(0);
+  updateCount();
+  winEl.classList.remove('show');
+}
+
+gridEl.addEventListener('click', ev => {
+  const card = ev.target.closest('.card');
+  if (!card || lock || card.classList.contains('up')) return;
+
+  if (!started) {
+    started = true;
+    startTime = Date.now();
+    tick = setInterval(() => updateTimer(elapsed()), 250);
+  }
+  card.classList.add('up');
+  sndSwap();
+
+  if (!first) { first = card; return; }
+
+  second = card;
+  moves++;
+
+  if (first.dataset.e === second.dataset.e) {
+    first.classList.add('done');
+    second.classList.add('done');
+    first = second = null;
+    matched += 2;
+    updateCount();
+    setTimeout(sndTin, 180);
+    if (matched === total) {
+      stopTimer();
+      updateTimer(elapsed());
+      setTimeout(showWin, 500);
+    }
+  } else {
+    lock = true;
+    setTimeout(sndPop, 180);
+    setTimeout(() => {
+      first.classList.remove('up');
+      second.classList.remove('up');
+      sndSwap(0.2);
+      first = second = null;
+      lock = false;
+    }, 800);
+  }
+});
+
+function showWin() {
+  statsEl.textContent = `${moves} jugadas · ${timerEl.textContent.replace('⏱ ', '')}`;
+  winEl.classList.add('show');
+}
+
+winEl.addEventListener('click', newGame);
+
+// Si cambia el tamaño de la ventana antes de empezar, rearma la grilla.
+// Una vez empezado el juego, la grilla se estira para seguir ocupando toda la pantalla.
+let rt;
+window.addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => { if (!started) newGame(); }, 200);
+});
+
+newGame();
+</script>
+</body>
+</html>
