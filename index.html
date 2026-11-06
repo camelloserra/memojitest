@@ -47,8 +47,10 @@
     font-variant-numeric: tabular-nums;
   }
   /* Alineados con el borde de la primera y la última columna de fichas */
-  #timer { left: calc(var(--margin-side) + var(--gap, 0px)); }
-  #count { right: calc(var(--margin-side) + var(--gap, 0px)); }
+  #timer { left: calc(var(--margin-side) + var(--align-l, 0px)); }
+  #count { right: calc(var(--margin-side) + var(--align-r, 0px)); }
+  body.menu .stat { visibility: hidden; }
+  #title { cursor: pointer; }
   header .emo {
     font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
     font-weight: normal;
@@ -63,7 +65,7 @@
     bottom: var(--margin-bottom);
   }
   #grid {
-    position: absolute; inset: 0;
+    position: absolute;
     display: grid;
     gap: var(--gap);
     padding: var(--gap);
@@ -93,6 +95,24 @@
   .card.done .front { background: #fff; }
   .card.done { cursor: default; }
 
+  #menu {
+    position: fixed; inset: 0;
+    display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px;
+  }
+  body.menu #menu { display: flex; }
+  #menu button {
+    width: 200px; padding: 14px 0;
+    font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #222; background: #e4e4e4;
+    border: none; border-radius: 12px;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  #menu button:hover { background: #d4d4d4; }
+  #menu button:active { transform: scale(.97); }
+
   #win {
     position: fixed; inset: 0;
     display: none; align-items: center; justify-content: center;
@@ -102,25 +122,43 @@
   }
   #win.show { display: flex; }
   #win h1 { font-size: 2.2rem; margin-bottom: .5rem; }
+  #winlevel { color: #333 !important; font-weight: 600; margin-bottom: .3rem; }
   #win p { font-size: 1.1rem; color: #666; }
 </style>
 </head>
-<body>
+<body class="menu">
 <header>
   <span id="timer" class="stat">⏱ 0:00</span>
-  <span>MEM<span class="emo">😉</span>JITEST</span>
+  <span id="title" title="Back to menu">MEM<span class="emo">😉</span>JITEST</span>
   <span id="count" class="stat">0/0</span>
 </header>
 <div id="board"><div id="grid"></div></div>
+<div id="menu">
+  <button data-level="easy">Easy</button>
+  <button data-level="medium">Medium</button>
+  <button data-level="hard">Hard</button>
+</div>
 <div id="win">
   <div>
-    <h1>¡Ganaste! 🎉</h1>
+    <h1>You win! 🎉</h1>
+    <p id="winlevel"></p>
     <p id="stats"></p>
-    <p style="margin-top:1rem">Tocá para jugar de nuevo</p>
+    <p style="margin-top:1rem">Tap to go back to the menu</p>
   </div>
 </div>
 
 <script>
+// En celulares, al abrir el link la parte de arriba a veces queda oculta bajo la barra
+// del navegador. Recarga una sola vez a los 0,5 s de entrar (una vez por sesión).
+(function () {
+  try {
+    if (!matchMedia('(pointer: coarse)').matches) return;
+    if (sessionStorage.getItem('mj-reloaded')) return;
+    sessionStorage.setItem('mj-reloaded', '1');
+    setTimeout(() => location.reload(), 500);
+  } catch (e) { /* sin sessionStorage no recargamos, para evitar un bucle */ }
+})();
+
 const EMOJIS = `
 😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😙 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 🤥 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 👿 💀 💩 🤡 👹 👺 👻 👽 👾 🤖 😺 😸 😹 😻 😼 😽 🙀 😿 😾 🙈 🙉 🙊
 💋 💌 💘 💝 💖 💗 💓 💞 💕 💟 💔 🧡 💛 💚 💙 💜 🤎 🖤 🤍 💯 💢 💥 💫 💦 💨 💣 💬 💭 💤
@@ -213,32 +251,65 @@ function shuffle(a) {
   return a;
 }
 
-// Calcula columnas y filas para llenar la pantalla con un rectángulo completo
-// y una cantidad PAR de casillas (para que todas formen parejas).
-function computeLayout() {
-  const board = document.getElementById('board');
-  const W = board.clientWidth, H = board.clientHeight;
-  const small = Math.min(W, H) < 600;
-  const target = small ? 30 : 36;        // tamaño aproximado de casilla (px)
-  const gap = small ? 3 : 4;
+// ===== Niveles =====
+// easy: grilla fija de 8x8 centrada.
+// medium / hard: llenan todo el espacio disponible con fichas de tamaño aproximado "target" (px).
+// Los pares de valores son [celular, computadora].
+const LEVELS = {
+  easy:   { cols: 8, rows: 8, gap: [5, 8], maxCell: [90, 110] },
+  medium: { target: [38, 56], gap: [4, 5] },
+  hard:   { target: [30, 36], gap: [3, 4] },
+};
+let level = null, cols = 0, rows = 0;
 
-  let cols = Math.max(2, Math.floor((W - gap) / (target + gap)));
-  let rows = Math.max(2, Math.floor((H - gap) / (target + gap)));
+function boardSize() {
+  const b = document.getElementById('board');
+  return { W: b.clientWidth, H: b.clientHeight, i: Math.min(innerWidth, innerHeight) < 600 ? 0 : 1 };
+}
 
+// Elige columnas y filas: siempre un rectángulo completo con cantidad PAR de casillas.
+function chooseGrid() {
+  const L = LEVELS[level];
+  if (L.cols) { cols = L.cols; rows = L.rows; return; }
+  const { W, H, i } = boardSize();
+  const target = L.target[i], gap = L.gap[i];
+  cols = Math.max(2, Math.floor((W - gap) / (target + gap)));
+  rows = Math.max(2, Math.floor((H - gap) / (target + gap)));
   if ((cols * rows) % 2 !== 0) {
     // Ajusta la dimensión que deja las casillas más cuadradas
     const ratio = (c, r) => Math.abs(Math.log(((W - gap) / c) / ((H - gap) / r)));
     if (cols > 2 && (rows <= 2 || ratio(cols - 1, rows) <= ratio(cols, rows - 1))) cols--;
     else rows--;
   }
-
-  const cw = (W - gap) / cols - gap;
-  const ch = (H - gap) / rows - gap;
-  return { cols, rows, gap, cell: Math.min(cw, ch) };
 }
 
-function newGame() {
-  const { cols, rows, gap, cell } = computeLayout();
+// Ubica y dimensiona la grilla (se puede llamar en cualquier momento, no cambia las fichas).
+function placeGrid() {
+  const L = LEVELS[level];
+  const { W, H, i } = boardSize();
+  const gap = L.gap[i];
+  let cw = (W - gap) / cols - gap, ch = (H - gap) / rows - gap;
+  if (L.cols) cw = ch = Math.min(cw, ch, L.maxCell[i]);   // easy: fichas cuadradas
+  const gw = cols * (cw + gap) + gap, gh = rows * (ch + gap) + gap;
+  const x = (W - gw) / 2, y = L.cols ? (H - gh) / 2 : 0;
+  const cell = Math.min(cw, ch);
+
+  Object.assign(gridEl.style, {
+    left: x + 'px', top: y + 'px', width: gw + 'px', height: gh + 'px',
+    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+    gridTemplateRows: `repeat(${rows}, 1fr)`,
+  });
+  const root = document.documentElement.style;
+  root.setProperty('--gap', gap + 'px');
+  root.setProperty('--align-l', (x + gap) + 'px');
+  root.setProperty('--align-r', (W - x - gw + gap) + 'px');
+  gridEl.style.setProperty('--fs', Math.round(cell * 0.62) + 'px');
+  gridEl.style.setProperty('--radius', Math.max(3, Math.round(cell * 0.14)) + 'px');
+}
+
+function newGame(lv) {
+  level = lv;
+  chooseGrid();
   total = cols * rows;
   const pairs = total / 2;
 
@@ -250,11 +321,7 @@ function newGame() {
   }
   shuffle(deck);
 
-  document.documentElement.style.setProperty('--gap', gap + 'px');
-  gridEl.style.setProperty('--fs', Math.round(cell * 0.62) + 'px');
-  gridEl.style.setProperty('--radius', Math.max(3, Math.round(cell * 0.14)) + 'px');
-  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-  gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+  placeGrid();
 
   const frag = document.createDocumentFragment();
   deck.forEach(e => {
@@ -272,7 +339,23 @@ function newGame() {
   updateTimer(0);
   updateCount();
   winEl.classList.remove('show');
+  document.body.classList.remove('menu');
 }
+
+function showMenu() {
+  stopTimer();
+  started = false; level = null;
+  first = second = null; lock = false;
+  gridEl.replaceChildren();
+  winEl.classList.remove('show');
+  document.body.classList.add('menu');
+}
+
+document.getElementById('menu').addEventListener('click', ev => {
+  const btn = ev.target.closest('button');
+  if (btn) { ac(); newGame(btn.dataset.level); }
+});
+document.getElementById('title').addEventListener('click', showMenu);
 
 gridEl.addEventListener('click', ev => {
   const card = ev.target.closest('.card');
@@ -306,9 +389,11 @@ gridEl.addEventListener('click', ev => {
   } else {
     lock = true;
     setTimeout(sndPop, 180);
+    const c1 = first, c2 = second;
     setTimeout(() => {
-      first.classList.remove('up');
-      second.classList.remove('up');
+      if (first !== c1) return;          // ya se volvió al menú o empezó otra partida
+      c1.classList.remove('up');
+      c2.classList.remove('up');
       sndSwap(0.2);
       first = second = null;
       lock = false;
@@ -317,21 +402,24 @@ gridEl.addEventListener('click', ev => {
 });
 
 function showWin() {
-  statsEl.textContent = `${moves} jugadas · ${timerEl.textContent.replace('⏱ ', '')}`;
+  const name = level.charAt(0).toUpperCase() + level.slice(1);
+  document.getElementById('winlevel').textContent = `You cleared the ${name} level!`;
+  statsEl.textContent = `${total / 2} pairs · ${moves} moves · ${timerEl.textContent.replace('⏱ ', '')}`;
   winEl.classList.add('show');
 }
 
-winEl.addEventListener('click', newGame);
+winEl.addEventListener('click', showMenu);
 
-// Si cambia el tamaño de la ventana antes de empezar, rearma la grilla.
-// Una vez empezado el juego, la grilla se estira para seguir ocupando toda la pantalla.
+// Si cambia el tamaño de la ventana antes de tocar la primera ficha, rearma la grilla.
+// Una vez empezado, mantiene las fichas y solo reacomoda su tamaño.
 let rt;
 window.addEventListener('resize', () => {
   clearTimeout(rt);
-  rt = setTimeout(() => { if (!started) newGame(); }, 200);
+  rt = setTimeout(() => {
+    if (!level) return;
+    if (!started) newGame(level); else placeGrid();
+  }, 200);
 });
-
-newGame();
 </script>
 </body>
 </html>
