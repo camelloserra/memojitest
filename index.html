@@ -24,8 +24,8 @@
   }
   @media (max-width: 600px) {
     :root {
-      --title-h: 64px; --margin-side: 20px; --margin-bottom: 24px;
-      --title-fs: 21px; --stat-fs: 14px;
+      --title-h: 108px; --margin-side: 20px; --margin-bottom: 24px;
+      --title-fs: 32px; --stat-fs: 15px;
     }
   }
   header {
@@ -48,11 +48,11 @@
   }
   /* Alineados con el borde de la primera y la última columna de fichas */
   #hstats {
-    position: absolute; top: 0; bottom: 0;
+    position: absolute; top: 50%; transform: translateY(-50%);
     left: calc(var(--margin-side) + var(--align-l, 0px));
-    display: flex; align-items: center; gap: 1.2em;
+    display: flex; align-items: baseline; gap: 1.2em;
   }
-  #hstats .stat { position: static; }
+  #hstats .stat { position: static; display: block; line-height: 1; }
   #pnj {
     position: absolute; top: 0; bottom: 0;
     right: calc(var(--margin-side) + var(--align-r, 0px));
@@ -61,10 +61,19 @@
     color: #666; text-decoration: none;
   }
   #pnj:hover { color: #222; }
-  @media (max-width: 600px) { #pnj { flex-direction: column; justify-content: center; align-items: flex-end; line-height: 1.2; gap: 2px; } }
+  /* Celular: el nombre grande arriba; abajo, tiempo · ProhibidoNoJugar · pares */
   @media (max-width: 600px) {
-    #hstats { flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px; }
+    header {
+      display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto;
+      align-content: center; row-gap: 10px;
+      padding: 0 calc(var(--margin-side) + var(--align-r, 0px)) 0 calc(var(--margin-side) + var(--align-l, 0px));
+    }
+    #title { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
+    #hstats { display: contents; }
     #hstats .stat { line-height: 1.2; }
+    #timer { grid-row: 2; grid-column: 1; justify-self: start; }
+    #count { grid-row: 2; grid-column: 3; justify-self: end; }
+    #pnj { position: static; grid-row: 2; grid-column: 2; justify-self: center; display: block; line-height: 1.2; font-size: var(--stat-fs); }
   }
   body.menu .stat { visibility: hidden; }
   #title { cursor: pointer; }
