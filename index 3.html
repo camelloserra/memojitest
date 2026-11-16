@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>MEM😉JITEST</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #fff;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  /* ===== Márgenes (cambiá estos valores si ponés publicidad) ===== */
+  :root {
+    --title-h: 96px;       /* alto de la franja del título */
+    --margin-side: 64px;   /* margen izquierdo y derecho */
+    --margin-bottom: 64px; /* margen inferior */
+    --title-fs: 34px;      /* tamaño del título */
+    --stat-fs: 18px;       /* tamaño del tiempo y el contador */
+  }
+  @media (max-width: 600px) {
+    :root {
+      --title-h: 64px; --margin-side: 20px; --margin-bottom: 24px;
+      --title-fs: 21px; --stat-fs: 14px;
+    }
+  }
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: var(--title-h);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--title-fs);
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: #222;
+  }
+  header .stat {
+    position: absolute; top: 0; bottom: 0;
+    display: flex; align-items: center;
+    font-size: var(--stat-fs);
+    font-weight: 600;
+    letter-spacing: 0;
+    color: #666;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Alineados con el borde de la primera y la última columna de fichas */
+  #hstats {
+    position: absolute; top: 0; bottom: 0;
+    left: calc(var(--margin-side) + var(--align-l, 0px));
+    display: flex; align-items: center; gap: 1.2em;
+  }
+  #hstats .stat { position: static; }
+  #pnj {
+    position: absolute; top: 0; bottom: 0;
+    right: calc(var(--margin-side) + var(--align-r, 0px));
+    display: flex; align-items: center;
+    font-size: var(--stat-fs); font-weight: 600; letter-spacing: 0;
+    color: #666; text-decoration: none;
+  }
+  #pnj:hover { color: #222; }
+  @media (max-width: 600px) { #pnj { flex-direction: column; justify-content: center; align-items: flex-end; line-height: 1.2; gap: 2px; } }
+  @media (max-width: 600px) {
+    #hstats { flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px; }
+    #hstats .stat { line-height: 1.2; }
+  }
+  body.menu .stat { visibility: hidden; }
+  #title { cursor: pointer; }
+  header .emo {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    font-weight: normal;
+    letter-spacing: 0;
+    margin: 0 .04em;
+  }
+  #board {
+    position: fixed;
+    top: var(--title-h);
+    left: var(--margin-side);
+    right: var(--margin-side);
+    bottom: var(--margin-bottom);
+  }
+  #grid {
+    position: absolute;
+    display: grid;
+    gap: var(--gap);
+    padding: var(--gap);
+  }
+  .card { perspective: 600px; cursor: pointer; touch-action: manipulation; }
+  .inner {
+    position: relative; width: 100%; height: 100%;
+    transition: transform .3s ease;
+    transform-style: preserve-3d;
+  }
+  .card.up .inner { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0;
+    border-radius: var(--radius);
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .back { background: #d6d6d6; }
+  .card:hover:not(.up) .back { background: #c9c9c9; }
+  .front {
+    background: #f2f2f2;
+    transform: rotateY(180deg);
+    font-size: var(--fs);
+    line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  }
+  .card.done .front { background: #fff; }
+  .card.done { cursor: default; }
+
+  #menu {
+    position: fixed; inset: 0;
+    display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px;
+  }
+  body.menu #menu { display: flex; }
+  #menu button {
+    width: 200px; padding: 14px 0;
+    font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #222; background: #e4e4e4;
+    border: none; border-radius: 12px;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  #menu button:hover { background: #d4d4d4; }
+  #menu button:active { transform: scale(.97); }
+
+  #win {
+    position: fixed; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.85);
+    text-align: center; color: #333;
+    cursor: pointer;
+  }
+  #win.show { display: flex; }
+  #win h1 { font-size: 2.2rem; margin-bottom: .5rem; }
+  #winlevel { color: #333 !important; font-weight: 600; margin-bottom: .3rem; }
+  #win p { font-size: 1.1rem; color: #666; }
+  /* ranking mundial (ranking.js): mismo estilo que el menú */
+  .rk { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 1.2rem; cursor: default; }
+  .rk:empty { display: none; }
+  .pnj-form { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
+  .pnj-label { width: 100%; font-size: 15px; font-weight: 600; color: #666; }
+  .pnj-input { font: 800 26px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; width: 6.4em; padding: 10px 0 10px .4em;
+    letter-spacing: .4em; text-align: center; text-transform: uppercase; color: #222;
+    background: #fff; border: 2px solid #d4d4d4; border-radius: 12px; outline: none; }
+  .pnj-input:focus { border-color: #222; }
+  .pnj-input::placeholder { color: #ccc; }
+  .pnj-btn { font: 600 18px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #222; background: #e4e4e4;
+    border: none; border-radius: 12px; padding: 14px 24px; cursor: pointer; transition: background .15s, transform .1s; }
+  .pnj-btn:hover { background: #d4d4d4; }
+  .pnj-btn:active { transform: scale(.97); }
+  .pnj-btn:disabled { opacity: .5; pointer-events: none; }
+  .pnj-msg { width: 100%; min-height: 1em; font-size: 14px; color: #c0392b; }
+  .pnj-board { display: flex; flex-direction: column; align-items: center; }
+  .pnj-title { font-size: 15px; font-weight: 700; color: #222; margin-bottom: 8px; text-transform: none; }
+  .pnj-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: auto auto auto;
+    column-gap: 22px; row-gap: 4px; font-size: 16px; font-weight: 600; color: #666; font-variant-numeric: tabular-nums; }
+  .pnj-list li { display: contents; }
+  .pnj-list .pos { text-align: right; color: #aaa; }
+  .pnj-list .nm { text-align: left; color: #222; letter-spacing: .05em; }
+  .pnj-list .sc { text-align: right; }
+  .pnj-list li.me span { color: #222; font-weight: 800; background: #fff3a8; }
+  .pnj-list li.gap span { grid-column: 1 / -1; text-align: center; color: #aaa; background: none; }
+  .pnj-you { margin-top: 8px; font-size: 17px; font-weight: 800; color: #222; }
+
+</style>
+</head>
+<body class="menu">
+<header>
+  <div id="hstats"><span id="timer" class="stat">⏱ 0:00</span><span id="count" class="stat">0/0</span></div>
+  <span id="title" title="Back to menu">MEM<span class="emo">😉</span>JITEST</span>
+  <a id="pnj" href="/" title="Prohibido No Jugar"><span>Prohibido</span><span>NoJugar</span></a>
+</header>
+<div id="board"><div id="grid"></div></div>
+<div id="menu">
+  <button data-level="easy">Easy</button>
+  <button data-level="medium">Medium</button>
+  <button data-level="hard">Hard</button>
+</div>
+<div id="win">
+  <div>
+    <h1>You win! 🎉</h1>
+    <p id="winlevel"></p>
+    <p id="stats"></p>
+    <div class="rk" id="rk"></div>
+    <p style="margin-top:1rem">Tap to go back to the menu</p>
+  </div>
+</div>
+
+<script src="/ranking.js"></script>
+<script>
+// En celulares, al abrir el link la parte de arriba a veces queda oculta bajo la barra
+// del navegador. Recarga una sola vez a los 0,5 s de entrar (una vez por sesión).
+(function () {
+  try {
+    if (!matchMedia('(pointer: coarse)').matches) return;
+    if (sessionStorage.getItem('mj-reloaded')) return;
+    sessionStorage.setItem('mj-reloaded', '1');
+    setTimeout(() => location.reload(), 500);
+  } catch (e) { /* sin sessionStorage no recargamos, para evitar un bucle */ }
+})();
+
+const EMOJIS = `
+😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😙 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 🤥 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 👿 💀 💩 🤡 👹 👺 👻 👽 👾 🤖 😺 😸 😹 😻 😼 😽 🙀 😿 😾 🙈 🙉 🙊
+💋 💌 💘 💝 💖 💗 💓 💞 💕 💟 💔 🧡 💛 💚 💙 💜 🤎 🖤 🤍 💯 💢 💥 💫 💦 💨 💣 💬 💭 💤
+👋 🤚 ✋ 🖖 👌 🤏 🤞 🤟 🤘 🤙 👈 👉 👆 👇 👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝 🙏 💅 🤳 💪 🦾 🦿 🦵 🦶 👂 🦻 👃 🧠 🦷 🦴 👀 👅 👄 👶 🧒 👦 👧 🧑 👱 👨 🧔 👩 🧓 👴 👵
+🐵 🐒 🦍 🦧 🐶 🐕 🦮 🐩 🐺 🦊 🦝 🐱 🐈 🦁 🐯 🐅 🐆 🐴 🐎 🦄 🦓 🦌 🐮 🐂 🐃 🐄 🐷 🐖 🐗 🐽 🐏 🐑 🐐 🐪 🐫 🦙 🦒 🐘 🦏 🦛 🐭 🐁 🐀 🐹 🐰 🐇 🦔 🦇 🐻 🐨 🐼 🦥 🦦 🦨 🦘 🦡 🐾 🦃 🐔 🐓 🐣 🐤 🐥 🐦 🐧 🦅 🦆 🦢 🦉 🦩 🦚 🦜 🐸 🐊 🐢 🦎 🐍 🐲 🐉 🦕 🦖 🐳 🐋 🐬 🐟 🐠 🐡 🦈 🐙 🐚 🐌 🦋 🐛 🐜 🐝 🐞 🦗 🦂 🦟 🦠
+💐 🌸 💮 🌹 🥀 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🌾 🌿 🍀 🍁 🍂 🍃 🍄 🌰
+🍇 🍈 🍉 🍊 🍋 🍌 🍍 🥭 🍎 🍏 🍐 🍑 🍒 🍓 🥝 🍅 🥥 🥑 🍆 🥔 🥕 🌽 🥒 🥬 🥦 🧄 🧅 🥜 🍞 🥐 🥖 🥨 🥯 🥞 🧇 🧀 🍖 🍗 🥩 🥓 🍔 🍟 🍕 🌭 🥪 🌮 🌯 🥙 🧆 🥚 🍳 🥘 🍲 🥣 🥗 🍿 🧈 🧂 🥫 🍱 🍘 🍙 🍚 🍛 🍜 🍝 🍠 🍢 🍣 🍤 🍥 🥮 🍡 🥟 🥠 🥡 🦀 🦞 🦐 🦑 🦪 🍦 🍧 🍨 🍩 🍪 🎂 🍰 🧁 🥧 🍫 🍬 🍭 🍮 🍯 🍼 🥛 🍵 🍶 🍾 🍷 🍸 🍹 🍺 🍻 🥂 🥃 🥤 🧃 🧉 🧊 🥢 🍴 🥄 🔪 🏺
+🌍 🌎 🌏 🌐 🗾 🧭 🌋 🗻 🧱 🏠 🏡 🏢 🏣 🏤 🏥 🏦 🏨 🏩 🏪 🏫 🏬 🏭 🏯 🏰 💒 🗼 🗽 ⛪ 🕌 🛕 🕍 🕋 ⛲ ⛺ 🌁 🌃 🌄 🌅 🌆 🌇 🌉 🎠 🎡 🎢 💈 🎪 🚂 🚃 🚄 🚅 🚆 🚇 🚈 🚉 🚊 🚝 🚞 🚋 🚌 🚍 🚎 🚐 🚑 🚒 🚓 🚔 🚕 🚖 🚗 🚘 🚙 🚚 🚛 🚜 🛵 🦽 🦼 🛺 🚲 🛴 🛹 🚏 ⛽ 🚨 🚥 🚦 🛑 🚧 ⚓ ⛵ 🛶 🚤 🚢 🛫 🛬 🪂 💺 🚁 🚟 🚠 🚡 🚀 🛸 ⌛ ⏳ ⌚ ⏰ 🌑 🌓 🌕 🌗 🌙 🌚 🌛 🌝 🌞 ⭐ 🌟 🌠 ⛅ 🌀 🌈 🌂 ☔ ⚡ ⛄ 🔥 💧 🌊
+🎃 🎄 🎆 🎇 🧨 ✨ 🎈 🎉 🎊 🎋 🎍 🎎 🎏 🎐 🎑 🧧 🎀 🎁 🎫 🏆 🏅 🥇 🥈 🥉 ⚽ ⚾ 🥎 🏀 🏐 🏈 🏉 🎾 🥏 🎳 🏏 🏑 🏒 🥍 🏓 🏸 🥊 🥋 🥅 ⛳ 🎣 🤿 🎽 🎿 🛷 🥌 🎯 🪀 🪁 🎱 🔮 🧿 🎮 🎰 🎲 🧩 🧸 🃏 🀄 🎴 🎭 🎨 🧵 🧶
+👓 🥽 🥼 🦺 👔 👕 👖 🧣 🧤 🧥 🧦 👗 👘 🥻 🩱 🩲 🩳 👙 👚 👛 👜 👝 🎒 👞 👟 🥾 🥿 👠 👡 🩰 👢 👑 👒 🎩 🎓 🧢 📿 💄 💍 💎 🔇 🔊 📢 📣 📯 🔔 🔕 🎼 🎵 🎶 🎤 🎧 📻 🎷 🎸 🎹 🎺 🎻 🪕 🥁 📱 📞 📟 📠 🔋 🔌 💻 💽 💾 💿 🎥 🎬 📺 📷 📹 📼 🔍 💡 🔦 🏮 🪔 📕 📖 📗 📘 📙 📚 📓 📒 📜 📄 📰 🔖 💰 💴 💵 💶 💷 💸 💳 🧾 💹 📧 📨 📤 📥 📦 📫 📮 📝 💼 📁 📂 📅 📇 📈 📉 📊 📋 📌 📍 📎 📏 📐 🔒 🔓 🔑 🔨 🪓 🏹 🔧 🔩 🧰 🧲 🧪 🧫 🧬 🔬 🔭 📡 💉 🩸 💊 🩹 🩺 🚪 🪑 🚽 🚿 🛁 🪒 🧴 🧷 🧹 🧺 🧻 🧼 🧽 🧯 🛒 🗿
+🏧 🚮 🚰 ♿ 🚹 🚺 🚻 🚼 🚾 🛂 🛃 🛄 🛅 🚸 ⛔ 🚫 🚳 🚭 🚯 🚱 🚷 📵 🔞 🔄 🔙 🔚 🔛 🔜 🔝 🛐 ⛎ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ 🔀 🔁 🔂 ⏩ ⏪ ⏫ ⏬ 🎦 🔅 🔆 📶 📳 📴 ❓ ❕ ❗ 💱 💲 🔱 📛 🔰 ⭕ ✅ ❌ ❎ ➕ ➖ ➗ ➰ ➿ 🆎 🆑 🆒 🆓 🆔 🆕 🆖 🆗 🆘 🆙 🆚 🔴 🟠 🟡 🟢 🔵 🟣 🟤 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 🟫 ⬛ ⬜ 🔶 🔷 🔺 🔻 💠 🔘 🔳 🔲
+`.trim().split(/\s+/);
+const POOL = [...new Set(EMOJIS)];
+
+const gridEl  = document.getElementById('grid');
+const winEl   = document.getElementById('win');
+const statsEl = document.getElementById('stats');
+const timerEl = document.getElementById('timer');
+const countEl = document.getElementById('count');
+let tick = null;
+
+// ===== Sonidos (generados con Web Audio, sin archivos externos) =====
+let audio = null;
+function ac() {
+  if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+  if (audio.state === 'suspended') audio.resume();
+  return audio;
+}
+
+// "swap": soplido corto de ruido filtrado que barre hacia arriba
+function sndSwap(vol = 0.35) {
+  const a = ac(), t = a.currentTime, dur = 0.12;
+  const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(900, t);
+  f.frequency.exponentialRampToValueAtTime(4000, t + dur);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f).connect(g).connect(a.destination);
+  src.start(t); src.stop(t + dur);
+}
+
+// "tin!": campanita aguda con armónico
+function sndTin() {
+  const a = ac(), t = a.currentTime;
+  [[1760, 0.25], [2640, 0.12], [3520, 0.06]].forEach(([freq, vol]) => {
+    const o = a.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + 0.65);
+  });
+}
+
+// "pop": burbuja corta que cae de tono
+function sndPop() {
+  const a = ac(), t = a.currentTime;
+  const o = a.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(600, t);
+  o.frequency.exponentialRampToValueAtTime(120, t + 0.12);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+  o.connect(g).connect(a.destination);
+  o.start(t); o.stop(t + 0.16);
+}
+
+function fmt(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+function elapsed() { return Math.floor((Date.now() - startTime) / 1000); }
+function updateTimer(s) { timerEl.textContent = '⏱ ' + fmt(s); }
+function updateCount() { countEl.textContent = `${matched / 2}/${total / 2}`; }
+function stopTimer() { clearInterval(tick); tick = null; }
+
+let first = null, second = null, lock = false;
+let moves = 0, matched = 0, total = 0, started = false, startTime = 0;
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ===== Niveles =====
+// Grillas FIJAS para que los tiempos sean comparables en el ranking.
+// grid: [celular, computadora] = [columnas, filas]; se giran solas si la pantalla está vertical/horizontal.
+const LEVELS = {
+  easy:   { grid: [[8, 8],   [8, 8]],   gap: [5, 8], maxCell: [90, 110] },
+  medium: { grid: [[8, 12],  [16, 9]],  gap: [4, 5], maxCell: [70, 90] },
+  hard:   { grid: [[10, 16], [24, 13]], gap: [3, 4], maxCell: [56, 70] },
+};
+let level = null, cols = 0, rows = 0;
+
+function boardSize() {
+  const b = document.getElementById('board');
+  return { W: b.clientWidth, H: b.clientHeight, i: Math.min(innerWidth, innerHeight) < 600 ? 0 : 1 };
+}
+
+// Elige columnas y filas según el nivel y el tipo de pantalla (celular / computadora).
+let device = 'd';
+function chooseGrid() {
+  const { W, H, i } = boardSize();
+  device = i === 0 ? 'm' : 'd';
+  const [c, r] = LEVELS[level].grid[i], big = Math.max(c, r), small = Math.min(c, r);
+  if (W >= H) { cols = big; rows = small; } else { cols = small; rows = big; }
+}
+
+// Ubica y dimensiona la grilla (se puede llamar en cualquier momento, no cambia las fichas).
+function placeGrid() {
+  const L = LEVELS[level];
+  const { W, H, i } = boardSize();
+  const gap = L.gap[i];
+  let cw = (W - gap) / cols - gap, ch = (H - gap) / rows - gap;
+  cw = ch = Math.min(cw, ch, L.maxCell[i]);   // fichas cuadradas
+  const gw = cols * (cw + gap) + gap, gh = rows * (ch + gap) + gap;
+  const x = (W - gw) / 2, y = (H - gh) / 2;
+  const cell = Math.min(cw, ch);
+
+  Object.assign(gridEl.style, {
+    left: x + 'px', top: y + 'px', width: gw + 'px', height: gh + 'px',
+    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+    gridTemplateRows: `repeat(${rows}, 1fr)`,
+  });
+  const root = document.documentElement.style;
+  root.setProperty('--gap', gap + 'px');
+  root.setProperty('--align-l', (x + gap) + 'px');
+  root.setProperty('--align-r', (W - x - gw + gap) + 'px');
+  gridEl.style.setProperty('--fs', Math.round(cell * 0.62) + 'px');
+  gridEl.style.setProperty('--radius', Math.max(3, Math.round(cell * 0.14)) + 'px');
+}
+
+function newGame(lv) {
+  level = lv;
+  chooseGrid();
+  total = cols * rows;
+  const pairs = total / 2;
+
+  const pick = shuffle(POOL.slice());
+  const deck = [];
+  for (let i = 0; i < pairs; i++) {
+    const e = pick[i % pick.length];
+    deck.push(e, e);
+  }
+  shuffle(deck);
+
+  placeGrid();
+
+  const frag = document.createDocumentFragment();
+  deck.forEach(e => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.e = e;
+    card.innerHTML = `<div class="inner"><div class="face back"></div><div class="face front">${e}</div></div>`;
+    frag.appendChild(card);
+  });
+  gridEl.replaceChildren(frag);
+
+  first = second = null; lock = false;
+  moves = 0; matched = 0; started = false;
+  stopTimer();
+  updateTimer(0);
+  updateCount();
+  winEl.classList.remove('show');
+  document.body.classList.remove('menu');
+}
+
+function showMenu() {
+  stopTimer();
+  started = false; level = null;
+  first = second = null; lock = false;
+  gridEl.replaceChildren();
+  winEl.classList.remove('show');
+  document.body.classList.add('menu');
+}
+
+document.getElementById('menu').addEventListener('click', ev => {
+  const btn = ev.target.closest('button');
+  if (btn) { ac(); newGame(btn.dataset.level); }
+});
+document.getElementById('title').addEventListener('click', showMenu);
+
+gridEl.addEventListener('click', ev => {
+  const card = ev.target.closest('.card');
+  if (!card || lock || card.classList.contains('up')) return;
+
+  if (!started) {
+    started = true;
+    startTime = Date.now();
+    tick = setInterval(() => updateTimer(elapsed()), 250);
+  }
+  card.classList.add('up');
+  sndSwap();
+
+  if (!first) { first = card; return; }
+
+  second = card;
+  moves++;
+
+  if (first.dataset.e === second.dataset.e) {
+    first.classList.add('done');
+    second.classList.add('done');
+    first = second = null;
+    matched += 2;
+    updateCount();
+    setTimeout(sndTin, 180);
+    if (matched === total) {
+      stopTimer();
+      winSecs = Math.round((Date.now() - startTime) / 100) / 10;
+      updateTimer(elapsed());
+      setTimeout(showWin, 500);
+    }
+  } else {
+    lock = true;
+    setTimeout(sndPop, 180);
+    const c1 = first, c2 = second;
+    setTimeout(() => {
+      if (first !== c1) return;          // ya se volvió al menú o empezó otra partida
+      c1.classList.remove('up');
+      c2.classList.remove('up');
+      sndSwap(0.2);
+      first = second = null;
+      lock = false;
+    }, 800);
+  }
+});
+
+/* ===== Ranking mundial (ranking.js) ===== */
+const GAME = 'memojitest';
+let winSecs = 0;
+const fmtT = v => { v = +v; const m = Math.floor(v / 60), s = v - m * 60; return m + ':' + s.toFixed(1).padStart(4, '0'); };
+const where = () => device === 'm' ? 'phone' : 'computer';
+function showRanking(d, name) {
+  const rk = document.getElementById('rk'); rk.innerHTML = '';
+  rk.appendChild(PNJ.board(d, {
+    title: `${name} · ${where()} ranking`, format: fmtT,
+    youLabel: (p, t) => `You're #${p} of ${t}`
+  }));
+  if (d.me) rk.appendChild(PNJ.shareButton({
+    label: 'Share', copied: 'Copied!',
+    text: () => `😉 I cleared MEMOJITEST ${name} in ${fmtT(d.me.score)} and I'm #${d.me.pos} in the world (${where()}). Can you beat me?`
+  }));
+}
+function askName(name, mode) {
+  const rk = document.getElementById('rk'); rk.innerHTML = '';
+  if (!window.PNJ) return;
+  const f = PNJ.nameForm({
+    label: 'Your name for the world ranking', button: 'Save', saving: 'Saving…',
+    tooFast: 'Wait a few seconds', error: "Couldn't save. Try again.",
+    onSubmit: async n => showRanking(await PNJ.submit(GAME, mode, n, winSecs), name)
+  });
+  rk.appendChild(f);
+  if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => f.focusInput(), 50);
+}
+
+function showWin() {
+  const name = level.charAt(0).toUpperCase() + level.slice(1);
+  askName(name, level + '-' + device);
+  document.getElementById('winlevel').textContent = `You cleared the ${name} level!`;
+  statsEl.textContent = `${total / 2} pairs · ${moves} moves · ${timerEl.textContent.replace('⏱ ', '')}`;
+  winEl.classList.add('show');
+}
+
+winEl.addEventListener('click', showMenu);
+
+// Si cambia el tamaño de la ventana antes de tocar la primera ficha, rearma la grilla.
+// Una vez empezado, mantiene las fichas y solo reacomoda su tamaño.
+let rt;
+window.addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    if (!level) return;
+    if (!started) newGame(level); else placeGrid();
+  }, 200);
+});
+</script>
+</body>
+</html>
